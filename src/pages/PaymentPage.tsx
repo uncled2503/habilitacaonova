@@ -50,7 +50,7 @@ const PaymentPage: React.FC = () => {
                         phone: userData.phone.replace(/\D/g, ''),
                     },
                     items: [{ 
-                        title: 'Taxa de Adesão - Programa CNH do Brasil', 
+                        title: 'Checkout', 
                         unit_price: PAYMENT_AMOUNT_IN_CENTS, 
                         quantity: 1,
                         tangible: false
