@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { getFuriaPayCompanyData } from '../_shared/furiapay.ts'
+import { getPaguexCompanyData } from '../_shared/paguex.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,9 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const data = await getFuriaPayCompanyData();
+    const data = await getPaguexCompanyData();
     
-    console.log('[get-company-data] Dados da empresa (FuriaPay) buscados com sucesso.');
+    console.log('[get-company-data] Dados da empresa (Paguex) buscados com sucesso.');
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
