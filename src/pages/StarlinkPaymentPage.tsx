@@ -79,12 +79,12 @@ const StarlinkPaymentPage: React.FC = () => {
     }, [navigate]);
 
     useEffect(() => {
-        if (!paymentInfo?.data?.id) return;
+        if (!paymentInfo?.gateway_id) return;
 
         const interval = setInterval(async () => {
             try {
                 const { data, error: functionError } = await supabase.functions.invoke('get-payment-status', {
-                    body: { gatewayTransactionId: paymentInfo.data.id }
+                    body: { gatewayTransactionId: paymentInfo.gateway_id }
                 });
 
                 if (functionError) {
@@ -103,8 +103,8 @@ const StarlinkPaymentPage: React.FC = () => {
     }, [paymentInfo, navigate]);
 
     const handleCopy = () => {
-        if (paymentInfo?.data?.pix?.qr_code) {
-            navigator.clipboard.writeText(paymentInfo.data.pix.qr_code);
+        if (paymentInfo?.qr_code) {
+            navigator.clipboard.writeText(paymentInfo.qr_code);
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         }
@@ -117,8 +117,8 @@ const StarlinkPaymentPage: React.FC = () => {
         if (error) {
             return <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md flex items-center gap-3"><AlertTriangle size={20} /> <p>{error}</p></div>;
         }
-        if (paymentInfo?.data) {
-            const amountInReais = (paymentInfo.data.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (paymentInfo?.qr_code) {
+            const amountInReais = (paymentInfo.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             return (
                 <div className="text-center">
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">Finalize sua compra Starlink</h1>
@@ -126,7 +126,7 @@ const StarlinkPaymentPage: React.FC = () => {
                     
                     <div className="flex justify-center mb-6">
                         <QRCodeSVG
-                            value={paymentInfo.data.pix.qr_code}
+                            value={paymentInfo.qr_code}
                             size={256}
                             bgColor="#ffffff"
                             fgColor="#000000"
@@ -138,7 +138,7 @@ const StarlinkPaymentPage: React.FC = () => {
                     <div className="space-y-4">
                         <p className="font-semibold text-gray-700 text-lg">Ou copie o código e pague no seu app do banco:</p>
                         <div className="relative">
-                            <input type="text" readOnly value={paymentInfo.data.pix.qr_code} className="w-full bg-gray-100 border border-gray-300 rounded-lg p-3 pr-12 text-sm text-gray-600" />
+                            <input type="text" readOnly value={paymentInfo.qr_code} className="w-full bg-gray-100 border border-gray-300 rounded-lg p-3 pr-12 text-sm text-gray-600" />
                             <button onClick={handleCopy} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:bg-gray-200 rounded-full">
                                 {isCopied ? <CheckCircle size={20} className="text-green-600" /> : <Copy size={20} />}
                             </button>

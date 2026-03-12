@@ -83,15 +83,15 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
   };
 
   const handleCopy = () => {
-    if (paymentInfo?.data?.pix?.qr_code) {
-        navigator.clipboard.writeText(paymentInfo.data.pix.qr_code);
+    if (paymentInfo?.qr_code) {
+        navigator.clipboard.writeText(paymentInfo.qr_code);
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
   const handleDownloadPDF = () => {
-    if (!paymentInfo?.data) return;
+    if (!paymentInfo?.qr_code) return;
 
     const doc = new jsPDF({ orientation: 'p', unit: 'px', format: [280, 420] });
     const canvas = document.getElementById('qr-code-canvas') as HTMLCanvasElement;
@@ -100,7 +100,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
         return;
     }
     const qrCodeDataUrl = canvas.toDataURL('image/png');
-    const amountFormatted = (paymentInfo.data.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const amountFormatted = (paymentInfo.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     const logoImg = new Image();
     logoImg.src = '/Gov.br_logo.svg.png';
@@ -118,7 +118,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
         doc.roundedRect(30, 225, 220, 70, 5, 5, 'FD');
         doc.setFontSize(8);
         doc.setTextColor(107, 114, 128);
-        const pixKey = paymentInfo.data.pix.qr_code;
+        const pixKey = paymentInfo.qr_code;
         const splitText = doc.splitTextToSize(pixKey, 210);
         doc.text(splitText, 35, 235);
         doc.setFillColor(13, 110, 253);
@@ -162,16 +162,16 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md flex items-center gap-3">
               <AlertTriangle size={20} /> <p>{error}</p>
             </div>
-          ) : paymentInfo?.data ? (
+          ) : paymentInfo?.qr_code ? (
             <div className="text-center">
               <h3 className="text-xl font-bold text-gray-800 mb-2">Valor Pendente - Taxa de Adesão</h3>
               <p className="text-gray-600 mb-4">
-                Valor: <strong>{(paymentInfo.data.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                Valor: <strong>{(paymentInfo.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
               </p>
               <div className="flex justify-center mb-4">
                 <QRCodeCanvas
                   id="qr-code-canvas"
-                  value={paymentInfo.data.pix.qr_code}
+                  value={paymentInfo.qr_code}
                   size={200}
                   bgColor="#ffffff"
                   fgColor="#000000"
@@ -179,7 +179,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
                 />
               </div>
               <div className="relative bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm text-gray-600 text-left break-all">
-                {paymentInfo.data.pix.qr_code}
+                {paymentInfo.qr_code}
               </div>
               <button onClick={handleCopy} className="w-full mt-3 flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">
                 {isCopied ? <><CheckCircle size={20} /> Copiado!</> : <><Copy size={20} /> Copiar Código PIX</>}

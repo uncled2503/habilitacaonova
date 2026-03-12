@@ -43,7 +43,6 @@ serve(async (req) => {
     const paguexResponse = await createPaguexTransaction(paguexPayload);
     console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
 
-    // Corrigindo a extração de dados da resposta da Paguex
     const paguexData = paguexResponse?.data;
     const gatewayTransactionId = paguexData?.id;
     const amountInCents = paguexData?.amount;
@@ -65,10 +64,10 @@ serve(async (req) => {
       lead_id: metadata.lead_id || null,
       starlink_customer_id: metadata.starlink_customer_id || null,
       gateway_transaction_id: gatewayTransactionId,
-      amount: amountInCents / 100, // Salvar o valor em reais
+      amount: amountInCents / 100,
       status: 'pending',
       provider: 'paguex',
-      raw_gateway_response: paguexResponse, // Salva a resposta completa para depuração
+      raw_gateway_response: paguexResponse,
     };
 
     console.log('[create-payment] Attempting to insert transaction into database with data:', JSON.stringify(transactionToInsert));
@@ -86,8 +85,16 @@ serve(async (req) => {
         console.log(`[create-payment] Transaction saved to DB successfully. Internal ID: ${insertedTransaction.id}`);
     }
     
+    const responseForFrontend = {
+        success: true,
+        qr_code: qrCodeText,
+        qr_code_image: paguexData?.pix?.qr_code_image,
+        amount: amountInCents,
+        gateway_id: gatewayTransactionId,
+    };
+
     console.log('[create-payment] Formatting response for frontend and sending.');
-    return new Response(JSON.stringify(paguexResponse), {
+    return new Response(JSON.stringify(responseForFrontend), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

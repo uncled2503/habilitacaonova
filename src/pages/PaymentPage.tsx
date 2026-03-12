@@ -76,12 +76,12 @@ const PaymentPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (!paymentInfo?.data?.id) return;
+        if (!paymentInfo?.gateway_id) return;
 
         const interval = setInterval(async () => {
             try {
                 const { data, error: functionError } = await supabase.functions.invoke('get-payment-status', {
-                    body: { gatewayTransactionId: paymentInfo.data.id }
+                    body: { gatewayTransactionId: paymentInfo.gateway_id }
                 });
 
                 if (functionError) {
@@ -93,14 +93,14 @@ const PaymentPage: React.FC = () => {
             } catch (e) {
                 console.error('Error invoking get-payment-status function:', e);
             }
-        }, 30000); // Poll every 30 seconds
+        }, 30000);
 
         return () => clearInterval(interval);
     }, [paymentInfo, navigate]);
 
     const handleCopy = () => {
-        if (paymentInfo?.data?.pix?.qr_code) {
-            navigator.clipboard.writeText(paymentInfo.data.pix.qr_code);
+        if (paymentInfo?.qr_code) {
+            navigator.clipboard.writeText(paymentInfo.qr_code);
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         }
@@ -113,8 +113,8 @@ const PaymentPage: React.FC = () => {
         if (error) {
             return <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md flex items-center gap-3"><AlertTriangle size={20} /> <p>{error}</p></div>;
         }
-        if (paymentInfo?.data) {
-            const amountInReais = (paymentInfo.data.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (paymentInfo?.qr_code) {
+            const amountInReais = (paymentInfo.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             return (
                 <div className="text-center">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">Taxa de Emissão da CNH</h1>
@@ -153,7 +153,7 @@ const PaymentPage: React.FC = () => {
 
                     <div className="flex justify-center mb-6">
                         <QRCodeSVG
-                            value={paymentInfo.data.pix.qr_code}
+                            value={paymentInfo.qr_code}
                             size={256}
                             bgColor="#ffffff"
                             fgColor="#000000"
@@ -165,7 +165,7 @@ const PaymentPage: React.FC = () => {
                     <div className="space-y-4">
                         <p className="font-semibold text-gray-700 text-lg">Ou copie o código e pague no seu app do banco:</p>
                         <div className="relative bg-gray-100 border border-gray-300 rounded-lg p-3 text-sm text-gray-600 text-left break-all">
-                            {paymentInfo.data.pix.qr_code}
+                            {paymentInfo.qr_code}
                         </div>
                         <button 
                             onClick={handleCopy} 
