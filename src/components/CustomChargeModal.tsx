@@ -55,10 +55,10 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
       const payload = {
         amount: amountInCents,
         customer: {
-          name: 'lead automatico',
-          email: 'leadautomatico@gmail.com',
-          document: { type: 'cpf', number: '40028922912' },
-          phone: '21998510192',
+          name: 'Cobrança Avulsa',
+          email: 'cobranca.avulsa@email.com',
+          document: { type: 'cpf', number: '83498144033' }, // CPF Válido
+          phone: '21987654321', // Telefone Válido
         },
         items: [{ 
             title: 'Cobrança Avulsa', 
