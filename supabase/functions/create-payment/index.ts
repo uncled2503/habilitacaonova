@@ -43,11 +43,13 @@ serve(async (req) => {
     const paguexResponse = await createPaguexTransaction(paguexPayload);
     console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
 
-    const gatewayTransactionId = paguexResponse?.Id;
-    const amountInReais = paguexResponse?.Amount;
-    const qrCodeText = paguexResponse?.Pix?.QrCodeText;
+    // Corrigindo a extração de dados da resposta da Paguex
+    const paguexData = paguexResponse?.data;
+    const gatewayTransactionId = paguexData?.id;
+    const amountInCents = paguexData?.amount;
+    const qrCodeText = paguexData?.pix?.qr_code;
 
-    if (!gatewayTransactionId || amountInReais === undefined || !qrCodeText) {
+    if (!gatewayTransactionId || amountInCents === undefined || !qrCodeText) {
       console.error('[create-payment] Invalid response structure from Paguex:', paguexResponse);
       throw new Error('Resposta inválida do provedor de pagamento. Não foi possível extrair os dados do PIX.');
     }
@@ -63,9 +65,10 @@ serve(async (req) => {
       lead_id: metadata.lead_id || null,
       starlink_customer_id: metadata.starlink_customer_id || null,
       gateway_transaction_id: gatewayTransactionId,
-      amount: amountInReais,
+      amount: amountInCents / 100, // Salvar o valor em reais
       status: 'pending',
       provider: 'paguex',
+      raw_gateway_response: paguexResponse, // Salva a resposta completa para depuração
     };
 
     console.log('[create-payment] Attempting to insert transaction into database with data:', JSON.stringify(transactionToInsert));
