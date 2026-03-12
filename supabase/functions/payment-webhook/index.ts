@@ -16,27 +16,30 @@ serve(async (req) => {
 
   try {
     const webhookData = await req.json();
-    console.log('[payment-webhook] Received webhook data from Paguex:', JSON.stringify(webhookData, null, 2));
+    console.log('[payment-webhook] Received webhook data from FuriaPay:', JSON.stringify(webhookData, null, 2));
 
+    // Ajustado para o formato da FuriaPay (Id, Status, Amount)
     const { Id: gatewayTransactionId, Status: newStatus, Amount } = webhookData;
 
     if (!gatewayTransactionId || !newStatus) {
-        console.error('[payment-webhook] Missing Id or Status in Paguex webhook payload.');
+        console.error('[payment-webhook] Missing Id or Status in FuriaPay webhook payload.');
         return new Response(JSON.stringify({ error: 'Missing required fields in webhook payload.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         });
     }
 
+    // Create Supabase client with service_role key to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Find and update the transaction in our database
     const { data: updatedTransaction, error: updateError } = await supabaseAdmin
       .from('transactions')
       .update({
-        status: newStatus.toLowerCase(),
+        status: newStatus.toLowerCase(), // Convertendo para minúsculas para padronizar no banco
         raw_gateway_response: webhookData,
       })
       .eq('gateway_transaction_id', gatewayTransactionId)
@@ -60,6 +63,7 @@ serve(async (req) => {
 
     console.log(`[payment-webhook] Successfully updated transaction ${updatedTransaction.id} to status '${newStatus}'.`);
 
+    // O status de pago da FuriaPay é 'PAID'
     if (newStatus.toUpperCase() === 'PAID' && !updatedTransaction.meta_event_sent) {
       console.log(`[payment-webhook] Processing PAID event for transaction ${updatedTransaction.id}.`);
       
@@ -71,10 +75,10 @@ serve(async (req) => {
       }
 
       const eventId = updatedTransaction.id;
-      const amountInReais = Amount / 100; // Corrigido: Convertendo centavos para reais
 
+      // O valor (Amount) já vem em Reais, conforme a documentação
       await sendMetaPurchaseEvent(
-        amountInReais,
+        Amount,
         'BRL',
         eventId,
         userDataForMeta,

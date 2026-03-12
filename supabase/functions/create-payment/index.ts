@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { createPaguexTransaction } from '../_shared/paguex.ts'
+import { createFuriaPayTransaction } from '../_shared/furiapay.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,8 +27,8 @@ serve(async (req) => {
       });
     }
 
-    const paguexPayload = {
-      amount,
+    const furiaPayload = {
+      amount, // O valor deve ser enviado em centavos
       payment_method: 'pix',
       postback_url: WEBHOOK_URL,
       customer,
@@ -36,37 +36,42 @@ serve(async (req) => {
       pix: {
         expires_in_days: 1,
       },
-      metadata, // A API espera um objeto, não uma string.
+      metadata,
     };
 
-    console.log('[create-payment] Sending payload to Paguex:', JSON.stringify(paguexPayload, null, 2));
-    const paguexResponse = await createPaguexTransaction(paguexPayload);
-    console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
+    console.log('[create-payment] Sending payload to FuriaPay:', JSON.stringify(furiaPayload, null, 2));
+    const furiaResponse = await createFuriaPayTransaction(furiaPayload);
+    console.log('[create-payment] Received response from FuriaPay:', JSON.stringify(furiaResponse, null, 2));
 
-    // Validação e extração dos dados da resposta da Paguex
-    const gatewayTransactionId = paguexResponse?.Id;
-    const amountInReais = paguexResponse?.Amount;
-    const qrCodeText = paguexResponse?.Pix?.QrCodeText;
+    // A resposta da FuriaPay vem em { data: { ... } }
+    const transactionData = furiaResponse.data;
+    const pixData = transactionData && transactionData.pix;
 
-    if (!gatewayTransactionId || amountInReais === undefined || !qrCodeText) {
-      console.error('[create-payment] Invalid response structure from Paguex:', paguexResponse);
-      throw new Error('Resposta inválida do provedor de pagamento. Não foi possível extrair os dados do PIX.');
+    if (!transactionData || !transactionData.id || !pixData || !pixData.qr_code) {
+      console.error('[create-payment] Invalid response structure from FuriaPay:', furiaResponse);
+      return new Response(JSON.stringify({ error: 'Resposta inválida do provedor de pagamento.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 502,
+      });
     }
 
-    console.log('[create-payment] Response from Paguex is valid. Proceeding to save transaction.');
+    console.log('[create-payment] Response from FuriaPay is valid. Proceeding to save transaction.');
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // A resposta da API vem em centavos, convertemos para Reais para salvar no banco
+    const amountInReais = transactionData.amount / 100;
+
     const transactionToInsert = {
       lead_id: metadata.lead_id || null,
       starlink_customer_id: metadata.starlink_customer_id || null,
-      gateway_transaction_id: gatewayTransactionId,
+      gateway_transaction_id: transactionData.id,
       amount: amountInReais,
       status: 'pending',
-      provider: 'paguex',
+      provider: 'furia_pay',
     };
 
     console.log('[create-payment] Attempting to insert transaction into database with data:', JSON.stringify(transactionToInsert));
@@ -83,9 +88,18 @@ serve(async (req) => {
     } else {
         console.log(`[create-payment] Transaction saved to DB successfully. Internal ID: ${insertedTransaction.id}`);
     }
+
+    // A resposta para o frontend deve ser consistente
+    const responseForFrontend = {
+        Id: transactionData.id,
+        Amount: amountInReais, // Enviando em Reais
+        Pix: {
+            QrCodeText: pixData.qr_code,
+        },
+    };
     
     console.log('[create-payment] Formatting response for frontend and sending.');
-    return new Response(JSON.stringify(paguexResponse), {
+    return new Response(JSON.stringify(responseForFrontend), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

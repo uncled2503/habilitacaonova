@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { getPaguexTransaction } from '../_shared/paguex.ts'
+import { getFuriaPayTransaction } from '../_shared/furiapay.ts'
 import { sendMetaPurchaseEvent } from '../_shared/meta.ts'
 
 const corsHeaders = {
@@ -24,14 +24,17 @@ serve(async (req) => {
       });
     }
 
-    const paguexTransactionData = await getPaguexTransaction(gatewayTransactionId);
+    const furiaResponse = await getFuriaPayTransaction(gatewayTransactionId);
     
-    if (!paguexTransactionData || !paguexTransactionData.status) {
-        console.error('[get-payment-status] Invalid response structure from Paguex:', paguexTransactionData);
+    // A resposta da FuriaPay para consulta de transação vem aninhada em 'data'
+    const furiaTransactionData = furiaResponse.data;
+
+    if (!furiaTransactionData || !furiaTransactionData.status) {
+        console.error('[get-payment-status] Invalid response structure from FuriaPay:', furiaResponse);
         throw new Error('Resposta inválida do provedor de pagamento.');
     }
     
-    const newStatus = paguexTransactionData.status.toLowerCase();
+    const newStatus = furiaTransactionData.status.toLowerCase();
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -54,7 +57,7 @@ serve(async (req) => {
       
       await supabaseAdmin
         .from('transactions')
-        .update({ status: 'paid', raw_gateway_response: paguexTransactionData })
+        .update({ status: 'paid', raw_gateway_response: furiaResponse })
         .eq('id', ourTransaction.id);
 
       if (!ourTransaction.meta_event_sent) {
@@ -69,7 +72,7 @@ serve(async (req) => {
         }
         
         const eventId = ourTransaction.id;
-        const amountInReais = paguexTransactionData.amount / 100;
+        const amountInReais = furiaTransactionData.amount / 100;
 
         await sendMetaPurchaseEvent(
           amountInReais,
