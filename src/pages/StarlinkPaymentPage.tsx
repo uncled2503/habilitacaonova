@@ -77,7 +77,7 @@ const StarlinkPaymentPage: React.FC = () => {
         };
 
         createPayment();
-    }, [navigate]);
+    }, []);
 
     useEffect(() => {
         if (!paymentInfo) return;
