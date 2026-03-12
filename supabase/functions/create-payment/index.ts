@@ -28,7 +28,7 @@ serve(async (req) => {
     }
 
     const paguexPayload = {
-      amount, // O valor deve ser enviado em centavos
+      amount,
       payment_method: 'pix',
       postback_url: WEBHOOK_URL,
       customer,
@@ -36,29 +36,21 @@ serve(async (req) => {
       pix: {
         expires_in_days: 1,
       },
-      metadata: JSON.stringify(metadata), // Corrigido: Converte o objeto metadata para uma string JSON
+      metadata, // A API espera um objeto, não uma string.
     };
 
     console.log('[create-payment] Sending payload to Paguex:', JSON.stringify(paguexPayload, null, 2));
     const paguexResponse = await createPaguexTransaction(paguexPayload);
     console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
 
-    // Extrai os dados da resposta da Paguex, que vem em um array 'data'
-    const transactionDataArray = paguexResponse?.data;
-    if (!Array.isArray(transactionDataArray) || transactionDataArray.length === 0) {
-      throw new Error('Estrutura de resposta da Paguex para criação de transação é inválida (esperado `data` como array).');
-    }
-    const transactionData = transactionDataArray[0];
+    // Validação e extração dos dados da resposta da Paguex
+    const gatewayTransactionId = paguexResponse?.Id;
+    const amountInReais = paguexResponse?.Amount;
+    const qrCodeText = paguexResponse?.Pix?.QrCodeText;
 
-    // O campo 'pix' também é um array
-    const pixDataArray = transactionData?.pix;
-    if (!Array.isArray(pixDataArray) || pixDataArray.length === 0) {
-      throw new Error('Estrutura de resposta da Paguex para criação de transação é inválida (esperado `pix` como array).');
-    }
-    const pixData = pixDataArray[0];
-
-    if (!transactionData.id || !pixData.qr_code) {
-      throw new Error('Dados essenciais (ID da transação ou QR Code) não encontrados na resposta da Paguex.');
+    if (!gatewayTransactionId || amountInReais === undefined || !qrCodeText) {
+      console.error('[create-payment] Invalid response structure from Paguex:', paguexResponse);
+      throw new Error('Resposta inválida do provedor de pagamento. Não foi possível extrair os dados do PIX.');
     }
 
     console.log('[create-payment] Response from Paguex is valid. Proceeding to save transaction.');
@@ -68,12 +60,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const amountInReais = transactionData.amount / 100;
-
     const transactionToInsert = {
       lead_id: metadata.lead_id || null,
       starlink_customer_id: metadata.starlink_customer_id || null,
-      gateway_transaction_id: transactionData.id,
+      gateway_transaction_id: gatewayTransactionId,
       amount: amountInReais,
       status: 'pending',
       provider: 'paguex',
@@ -93,18 +83,9 @@ serve(async (req) => {
     } else {
         console.log(`[create-payment] Transaction saved to DB successfully. Internal ID: ${insertedTransaction.id}`);
     }
-
-    // Formata a resposta para ser idêntica à da API antiga, como solicitado
-    const responseForFrontend = {
-        Id: transactionData.id,
-        Amount: amountInReais,
-        Pix: {
-            QrCodeText: pixData.qr_code,
-        },
-    };
     
     console.log('[create-payment] Formatting response for frontend and sending.');
-    return new Response(JSON.stringify(responseForFrontend), {
+    return new Response(JSON.stringify(paguexResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
