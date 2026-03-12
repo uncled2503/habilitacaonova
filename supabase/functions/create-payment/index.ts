@@ -43,50 +43,45 @@ serve(async (req) => {
     const paguexResponse = await createPaguexTransaction(paguexPayload);
     console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
 
-    // Corrigindo a extração de dados da resposta da Paguex
     const paguexData = paguexResponse?.data;
     const gatewayTransactionId = paguexData?.id;
-    const amountInCents = paguexData?.amount;
-    const qrCodeText = paguexData?.pix?.qr_code;
 
-    if (!gatewayTransactionId || amountInCents === undefined || !qrCodeText) {
+    if (!gatewayTransactionId) {
       console.error('[create-payment] Invalid response structure from Paguex:', paguexResponse);
       throw new Error('Resposta inválida do provedor de pagamento. Não foi possível extrair os dados do PIX.');
     }
 
-    console.log('[create-payment] Response from Paguex is valid. Proceeding to save transaction.');
+    // Se NÃO for um pagamento do admin, salva no banco de dados.
+    if (!isAdminPayment) {
+      console.log('[create-payment] Standard payment detected. Saving to database...');
+      const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
 
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+      const transactionToInsert = {
+        lead_id: metadata.lead_id || null,
+        starlink_customer_id: metadata.starlink_customer_id || null,
+        gateway_transaction_id: gatewayTransactionId,
+        amount: paguexData.amount / 100,
+        status: 'pending',
+        provider: 'paguex',
+        raw_gateway_response: paguexResponse,
+      };
 
-    const transactionToInsert = {
-      lead_id: metadata.lead_id || null,
-      starlink_customer_id: metadata.starlink_customer_id || null,
-      gateway_transaction_id: gatewayTransactionId,
-      amount: amountInCents / 100, // Salvar o valor em reais
-      status: 'pending',
-      provider: 'paguex',
-      raw_gateway_response: paguexResponse, // Salva a resposta completa para depuração
-    };
+      const { error: dbError } = await supabaseAdmin
+        .from('transactions')
+        .insert(transactionToInsert);
 
-    console.log('[create-payment] Attempting to insert transaction into database with data:', JSON.stringify(transactionToInsert));
-    const { data: insertedTransaction, error: dbError } = await supabaseAdmin
-      .from('transactions')
-      .insert(transactionToInsert)
-      .select('id')
-      .single();
-
-    if (dbError || !insertedTransaction) {
-      console.error('[create-payment] Error saving transaction to DB:', dbError);
-      console.error('[create-payment] Data that failed to insert:', JSON.stringify(transactionToInsert));
-      throw new Error('Falha ao registrar a transação. Por favor, tente novamente.');
+      if (dbError) {
+        console.error('[create-payment] Error saving transaction to DB:', dbError);
+        throw new Error('Falha ao registrar a transação no banco de dados.');
+      }
+      console.log('[create-payment] Transaction saved to DB successfully.');
     } else {
-        console.log(`[create-payment] Transaction saved to DB successfully. Internal ID: ${insertedTransaction.id}`);
+      console.log('[create-payment] Admin payment detected. Skipping database insertion.');
     }
     
-    console.log('[create-payment] Formatting response for frontend and sending.');
     return new Response(JSON.stringify(paguexResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
