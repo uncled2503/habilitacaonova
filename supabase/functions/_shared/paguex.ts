@@ -24,7 +24,7 @@ export function getPaguexAuthHeader(): string {
  */
 export async function createPaguexTransaction(payload: object) {
   const authHeader = getPaguexAuthHeader();
-  const url = `${PAGUEX_API_URL}/payment-transactions/create`;
+  const url = `${PAGUEX_API_URL}/payment-transaction/create`;
 
   const response = await fetch(url, {
     method: 'POST',
