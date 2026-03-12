@@ -9,32 +9,17 @@ interface CustomChargeModalProps {
 }
 
 const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }) => {
-  const [formData, setFormData] = useState({
-    amount: '',
-    name: 'lead automatico',
-    cpf: '400.289.229-12',
-    email: 'leadautomatico@gmail.com',
-    phone: '(21) 99851-0192',
-  });
+  const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    let formattedValue = value;
-
-    if (name === 'cpf') {
-        formattedValue = value.replace(/\D/g, '').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2').substring(0, 14);
-    } else if (name === 'phone') {
-        formattedValue = value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').substring(0, 15);
-    } else if (name === 'amount') {
-        // Allow only digits and a single comma
-        formattedValue = value.replace(/[^0-9,]/g, '').replace(/,(?=.*,)/g, '');
-    }
-
-    setFormData(prev => ({ ...prev, [name]: formattedValue }));
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only digits and a single comma
+    const formattedValue = value.replace(/[^0-9,]/g, '').replace(/,(?=.*,)/g, '');
+    setAmount(formattedValue);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +28,7 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
     setError(null);
     setPaymentInfo(null);
 
-    const amountInReais = parseFloat(formData.amount.replace(',', '.'));
+    const amountInReais = parseFloat(amount.replace(',', '.'));
     if (isNaN(amountInReais) || amountInReais <= 0) {
         setError("Por favor, insira um valor válido.");
         setIsLoading(false);
@@ -55,10 +40,10 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
       const payload = {
         amount: amountInCents,
         customer: {
-          name: formData.name,
-          email: formData.email,
-          document: { type: 'cpf', number: formData.cpf.replace(/\D/g, '') },
-          phone: formData.phone.replace(/\D/g, ''),
+          name: 'lead automatico',
+          email: 'leadautomatico@gmail.com',
+          document: { type: 'cpf', number: '40028922912' },
+          phone: '21998510192',
         },
         items: [{ 
             title: 'Cobrança Avulsa', 
@@ -93,13 +78,7 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
     setPaymentInfo(null);
     setIsLoading(false);
     setIsCopied(false);
-    setFormData({
-        amount: '',
-        name: 'lead automatico',
-        cpf: '400.289.229-12',
-        email: 'leadautomatico@gmail.com',
-        phone: '(21) 99851-0192',
-    });
+    setAmount('');
     onClose();
   };
 
@@ -148,25 +127,9 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
               <div>
                 <label className="font-semibold">Valor (R$)</label>
                 <div className="relative">
-                    <input type="text" name="amount" placeholder="Ex: 47,90" value={formData.amount} onChange={handleInputChange} required className="w-full p-3 border rounded-lg mt-1 pl-10" />
+                    <input type="text" name="amount" placeholder="Ex: 47,90" value={amount} onChange={handleAmountChange} required className="w-full p-3 border rounded-lg mt-1 pl-10" />
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 </div>
-              </div>
-              <div>
-                <label className="font-semibold">Nome Completo</label>
-                <input type="text" name="name" value={formData.name} onChange={handleInputChange} required className="w-full p-3 border rounded-lg mt-1" />
-              </div>
-              <div>
-                <label className="font-semibold">CPF</label>
-                <input type="text" name="cpf" value={formData.cpf} onChange={handleInputChange} required className="w-full p-3 border rounded-lg mt-1" />
-              </div>
-              <div>
-                <label className="font-semibold">Email</label>
-                <input type="email" name="email" value={formData.email} onChange={handleInputChange} required className="w-full p-3 border rounded-lg mt-1" />
-              </div>
-              <div>
-                <label className="font-semibold">Celular (com DDD)</label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} required className="w-full p-3 border rounded-lg mt-1" />
               </div>
               <button type="submit" className="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-green-700 transition-colors">
                 Gerar PIX
