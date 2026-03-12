@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { QRCodeCanvas } from 'qrcode.react';
-import { X, Loader2, AlertTriangle, Copy, CheckCircle, DollarSign } from 'lucide-react';
+import jsPDF from 'jspdf';
+import { X, Loader2, AlertTriangle, Copy, CheckCircle, DollarSign, FileDown, Edit } from 'lucide-react';
 
 interface CustomChargeModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface CustomChargeModalProps {
 
 const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }) => {
   const [amount, setAmount] = useState('');
+  const [title, setTitle] = useState('Taxa de Adesão');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
@@ -50,10 +52,10 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
           name: "Lukas Nascimento Camelo",
           email: 'cobranca.avulsa@example.com',
           document: { type: 'cpf', number: "14435336707" },
-          phone: '11999999999', // Telefone genérico válido
+          phone: '11999999999',
         },
         items: [{ 
-            title: 'Serviços Administrativos', 
+            title: title, 
             unit_price: amountInCents, 
             quantity: 1,
             tangible: false
@@ -80,12 +82,54 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
     }
   };
 
+  const handleDownloadPDF = () => {
+    if (!paymentInfo?.data) return;
+
+    const doc = new jsPDF({ orientation: 'p', unit: 'px', format: [280, 420] });
+    const canvas = document.getElementById('qr-code-canvas-custom') as HTMLCanvasElement;
+    if (!canvas) {
+        console.error("QR Code Canvas não encontrado");
+        return;
+    }
+    const qrCodeDataUrl = canvas.toDataURL('image/png');
+    const amountFormatted = (paymentInfo.data.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    const logoImg = new Image();
+    logoImg.src = '/Gov.br_logo.svg.png';
+    logoImg.onload = () => {
+        doc.addImage(logoImg, 'PNG', 110, 20, 60, 15);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, 140, 60, { align: 'center' });
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Valor: ${amountFormatted}`, 140, 75, { align: 'center' });
+        doc.addImage(qrCodeDataUrl, 'PNG', 80, 90, 120, 120);
+        doc.setFillColor(243, 244, 246);
+        doc.setDrawColor(209, 213, 219);
+        doc.roundedRect(30, 225, 220, 70, 5, 5, 'FD');
+        doc.setFontSize(8);
+        doc.setTextColor(107, 114, 128);
+        const pixKey = paymentInfo.data.pix.qr_code;
+        const splitText = doc.splitTextToSize(pixKey, 210);
+        doc.text(splitText, 35, 235);
+        doc.setFillColor(13, 110, 253);
+        doc.roundedRect(30, 310, 220, 30, 5, 5, 'F');
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('Copiar Código PIX', 140, 328, { align: 'center' });
+        doc.save(`cobranca-pix.pdf`);
+    };
+  };
+
   const handleClose = () => {
     setError(null);
     setPaymentInfo(null);
     setIsLoading(false);
     setIsCopied(false);
     setAmount('');
+    setTitle('Taxa de Adesão');
     onClose();
   };
 
@@ -98,8 +142,6 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
             <X size={20} />
         </button>
         <div className="p-6 pt-10">
-          <h2 className="text-xl font-bold text-center text-gray-800 mb-6">Gerar Cobrança PIX Avulsa</h2>
-          
           {isLoading ? (
             <div className="flex flex-col items-center justify-center text-center h-64">
               <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
@@ -111,7 +153,8 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
             </div>
           ) : paymentInfo?.data ? (
             <div className="text-center">
-              <h3 className="text-lg font-bold text-gray-800">Cobrança Gerada com Sucesso!</h3>
+              <img src="/Gov.br_logo.svg.png" alt="gov.br" className="h-8 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-gray-800">{title}</h3>
               <p className="text-gray-600 mb-4">
                 Valor: <strong>{(paymentInfo.data.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
               </p>
@@ -128,9 +171,20 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
               <button onClick={handleCopy} className="w-full mt-3 flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">
                 {isCopied ? <><CheckCircle size={20} /> Copiado!</> : <><Copy size={20} /> Copiar Código PIX</>}
               </button>
+              <button onClick={handleDownloadPDF} className="w-full mt-3 flex items-center justify-center gap-2 bg-gray-700 text-white py-3 rounded-lg font-bold hover:bg-gray-800 transition-colors">
+                <FileDown size={20} /> Baixar PDF
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              <img src="/Gov.br_logo.svg.png" alt="gov.br" className="h-8 mx-auto mb-6" />
+              <div>
+                <label className="font-semibold">Título da Cobrança</label>
+                <div className="relative">
+                    <input type="text" name="title" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full p-3 border rounded-lg mt-1 pl-10" />
+                    <Edit className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                </div>
+              </div>
               <div>
                 <label className="font-semibold">Valor (R$)</label>
                 <div className="relative">
