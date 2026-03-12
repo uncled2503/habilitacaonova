@@ -43,16 +43,22 @@ serve(async (req) => {
     const paguexResponse = await createPaguexTransaction(paguexPayload);
     console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
 
-    const transactionData = paguexResponse;
-    const pixDataArray = transactionData && Array.isArray(transactionData.pix) ? transactionData.pix : [];
-    const pixData = pixDataArray.length > 0 ? pixDataArray[0] : null;
+    // Extrai os dados da resposta da Paguex, que vem em um array 'data'
+    const transactionDataArray = paguexResponse?.data;
+    if (!Array.isArray(transactionDataArray) || transactionDataArray.length === 0) {
+      throw new Error('Estrutura de resposta da Paguex para criação de transação é inválida (esperado `data` como array).');
+    }
+    const transactionData = transactionDataArray[0];
 
-    if (!transactionData || !transactionData.id || !pixData || !pixData.qr_code) {
-      console.error('[create-payment] Invalid response structure from Paguex:', paguexResponse);
-      return new Response(JSON.stringify({ error: 'Resposta inválida do provedor de pagamento.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 502,
-      });
+    // O campo 'pix' também é um array
+    const pixDataArray = transactionData?.pix;
+    if (!Array.isArray(pixDataArray) || pixDataArray.length === 0) {
+      throw new Error('Estrutura de resposta da Paguex para criação de transação é inválida (esperado `pix` como array).');
+    }
+    const pixData = pixDataArray[0];
+
+    if (!transactionData.id || !pixData.qr_code) {
+      throw new Error('Dados essenciais (ID da transação ou QR Code) não encontrados na resposta da Paguex.');
     }
 
     console.log('[create-payment] Response from Paguex is valid. Proceeding to save transaction.');
@@ -88,6 +94,7 @@ serve(async (req) => {
         console.log(`[create-payment] Transaction saved to DB successfully. Internal ID: ${insertedTransaction.id}`);
     }
 
+    // Formata a resposta para ser idêntica à da API antiga, como solicitado
     const responseForFrontend = {
         Id: transactionData.id,
         Amount: amountInReais,
