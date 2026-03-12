@@ -16,9 +16,24 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
   const [isCopied, setIsCopied] = useState(false);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Allow only digits and a single comma
-    const formattedValue = value.replace(/[^0-9,]/g, '').replace(/,(?=.*,)/g, '');
+    let value = e.target.value.replace(/\D/g, ''); // 1. Remove tudo que não é dígito
+
+    if (value === '') {
+        setAmount('');
+        return;
+    }
+
+    // 2. Converte para número para remover zeros à esquerda (ex: '0045' vira 45) e depois para string
+    value = String(parseInt(value, 10));
+
+    // 3. Adiciona zeros à esquerda se for menor que 3 dígitos (ex: '4' vira '004', '45' vira '045')
+    if (value.length < 3) {
+        value = value.padStart(3, '0');
+    }
+
+    // 4. Insere a vírgula na posição correta
+    const formattedValue = value.slice(0, -2) + ',' + value.slice(-2);
+
     setAmount(formattedValue);
   };
 
@@ -127,7 +142,7 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
               <div>
                 <label className="font-semibold">Valor (R$)</label>
                 <div className="relative">
-                    <input type="text" name="amount" placeholder="Ex: 47,90" value={amount} onChange={handleAmountChange} required className="w-full p-3 border rounded-lg mt-1 pl-10" />
+                    <input type="text" name="amount" placeholder="0,00" value={amount} onChange={handleAmountChange} required className="w-full p-3 border rounded-lg mt-1 pl-10" />
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 </div>
               </div>
