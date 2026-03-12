@@ -36,7 +36,7 @@ serve(async (req) => {
       pix: {
         expires_in_days: 1,
       },
-      metadata,
+      metadata: JSON.stringify(metadata), // Corrigido: Converte o objeto metadata para uma string JSON
     };
 
     console.log('[create-payment] Sending payload to Paguex:', JSON.stringify(paguexPayload, null, 2));
