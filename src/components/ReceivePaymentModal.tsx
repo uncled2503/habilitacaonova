@@ -54,13 +54,13 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
       const payload = {
         amount: amountInCents,
         customer: {
-          name: 'Cliente Avulso',
-          email: 'cliente@email.com',
-          document: { type: 'cpf', number: '11111111111' },
-          phone: '11999999999',
+          name: 'Cliente Painel',
+          email: 'cliente.painel@email.com',
+          document: { type: 'cpf', number: '07093546008' }, // CPF de teste válido
+          phone: '11987654321',
         },
         items: [{
-          title: 'Pagamento Avulso',
+          title: 'Pagamento Avulso (Painel)',
           unit_price: amountInCents,
           quantity: 1,
           tangible: false
