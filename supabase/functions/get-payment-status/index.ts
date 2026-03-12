@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { getFuriaPayTransaction } from '../_shared/furiapay.ts'
+import { getPaguexTransaction } from '../_shared/paguex.ts'
 import { sendMetaPurchaseEvent } from '../_shared/meta.ts'
 
 const corsHeaders = {
@@ -24,17 +24,17 @@ serve(async (req) => {
       });
     }
 
-    const furiaResponse = await getFuriaPayTransaction(gatewayTransactionId);
+    const paguexResponse = await getPaguexTransaction(gatewayTransactionId);
     
-    // A resposta da FuriaPay para consulta de transação vem aninhada em 'data'
-    const furiaTransactionData = furiaResponse.data;
+    // A resposta da Paguex para consulta de transação vem aninhada em 'data'
+    const paguexTransactionData = paguexResponse.data;
 
-    if (!furiaTransactionData || !furiaTransactionData.status) {
-        console.error('[get-payment-status] Invalid response structure from FuriaPay:', furiaResponse);
+    if (!paguexTransactionData || !paguexTransactionData.status) {
+        console.error('[get-payment-status] Invalid response structure from Paguex:', paguexResponse);
         throw new Error('Resposta inválida do provedor de pagamento.');
     }
     
-    const newStatus = furiaTransactionData.status.toLowerCase();
+    const newStatus = paguexTransactionData.status.toLowerCase();
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -57,7 +57,7 @@ serve(async (req) => {
       
       await supabaseAdmin
         .from('transactions')
-        .update({ status: 'paid', raw_gateway_response: furiaResponse })
+        .update({ status: 'paid', raw_gateway_response: paguexResponse })
         .eq('id', ourTransaction.id);
 
       if (!ourTransaction.meta_event_sent) {
@@ -72,7 +72,7 @@ serve(async (req) => {
         }
         
         const eventId = ourTransaction.id;
-        const amountInReais = furiaTransactionData.amount / 100;
+        const amountInReais = paguexTransactionData.amount / 100;
 
         await sendMetaPurchaseEvent(
           amountInReais,

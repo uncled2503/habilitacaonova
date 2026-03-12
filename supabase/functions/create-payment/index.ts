@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { createFuriaPayTransaction } from '../_shared/furiapay.ts'
+import { createPaguexTransaction } from '../_shared/paguex.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,8 +27,8 @@ serve(async (req) => {
       });
     }
 
-    const furiaPayload = {
-      amount, // O valor deve ser enviado em centavos
+    const paguexPayload = {
+      amount,
       payment_method: 'pix',
       postback_url: WEBHOOK_URL,
       customer,
@@ -39,39 +39,33 @@ serve(async (req) => {
       metadata,
     };
 
-    console.log('[create-payment] Sending payload to FuriaPay:', JSON.stringify(furiaPayload, null, 2));
-    const furiaResponse = await createFuriaPayTransaction(furiaPayload);
-    console.log('[create-payment] Received response from FuriaPay:', JSON.stringify(furiaResponse, null, 2));
+    console.log('[create-payment] Sending payload to Paguex:', JSON.stringify(paguexPayload, null, 2));
+    const paguexResponse = await createPaguexTransaction(paguexPayload);
+    console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
 
-    // A resposta da FuriaPay vem em { data: { ... } }
-    const transactionData = furiaResponse.data;
-    const pixData = transactionData && transactionData.pix;
+    const gatewayTransactionId = paguexResponse?.Id;
+    const amountInReais = paguexResponse?.Amount;
+    const qrCodeText = paguexResponse?.Pix?.QrCodeText;
 
-    if (!transactionData || !transactionData.id || !pixData || !pixData.qr_code) {
-      console.error('[create-payment] Invalid response structure from FuriaPay:', furiaResponse);
-      return new Response(JSON.stringify({ error: 'Resposta inválida do provedor de pagamento.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 502,
-      });
+    if (!gatewayTransactionId || amountInReais === undefined || !qrCodeText) {
+      console.error('[create-payment] Invalid response structure from Paguex:', paguexResponse);
+      throw new Error('Resposta inválida do provedor de pagamento. Não foi possível extrair os dados do PIX.');
     }
 
-    console.log('[create-payment] Response from FuriaPay is valid. Proceeding to save transaction.');
+    console.log('[create-payment] Response from Paguex is valid. Proceeding to save transaction.');
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // A resposta da API vem em centavos, convertemos para Reais para salvar no banco
-    const amountInReais = transactionData.amount / 100;
-
     const transactionToInsert = {
       lead_id: metadata.lead_id || null,
       starlink_customer_id: metadata.starlink_customer_id || null,
-      gateway_transaction_id: transactionData.id,
+      gateway_transaction_id: gatewayTransactionId,
       amount: amountInReais,
       status: 'pending',
-      provider: 'furia_pay',
+      provider: 'paguex',
     };
 
     console.log('[create-payment] Attempting to insert transaction into database with data:', JSON.stringify(transactionToInsert));
@@ -88,18 +82,9 @@ serve(async (req) => {
     } else {
         console.log(`[create-payment] Transaction saved to DB successfully. Internal ID: ${insertedTransaction.id}`);
     }
-
-    // A resposta para o frontend deve ser consistente
-    const responseForFrontend = {
-        Id: transactionData.id,
-        Amount: amountInReais, // Enviando em Reais
-        Pix: {
-            QrCodeText: pixData.qr_code,
-        },
-    };
     
     console.log('[create-payment] Formatting response for frontend and sending.');
-    return new Response(JSON.stringify(responseForFrontend), {
+    return new Response(JSON.stringify(paguexResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
