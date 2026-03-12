@@ -49,7 +49,7 @@ const GenerateChargeModal: React.FC<GenerateChargeModalProps> = ({ isOpen, onClo
             phone: lead.phone.replace(/\D/g, ''),
           },
           items: [{ 
-              title: 'Taxa de Adesão CNH', 
+              title: 'Checkout', 
               unit_price: PAYMENT_AMOUNT_IN_CENTS, 
               quantity: 1,
               tangible: false
