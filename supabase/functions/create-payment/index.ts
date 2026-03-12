@@ -43,8 +43,7 @@ serve(async (req) => {
     const paguexResponse = await createPaguexTransaction(paguexPayload);
     console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
 
-    // A resposta da Paguex vem em { data: { ... } }
-    const transactionData = paguexResponse.data;
+    const transactionData = paguexResponse; // Corrigido: A resposta é o próprio objeto
     const pixData = transactionData && transactionData.pix;
 
     if (!transactionData || !transactionData.id || !pixData || !pixData.qr_code) {
@@ -62,7 +61,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // A resposta da API vem em centavos, convertemos para Reais para salvar no banco
     const amountInReais = transactionData.amount / 100;
 
     const transactionToInsert = {
@@ -89,10 +87,9 @@ serve(async (req) => {
         console.log(`[create-payment] Transaction saved to DB successfully. Internal ID: ${insertedTransaction.id}`);
     }
 
-    // A resposta para o frontend deve ser consistente
     const responseForFrontend = {
         Id: transactionData.id,
-        Amount: amountInReais, // Enviando em Reais
+        Amount: amountInReais,
         Pix: {
             QrCodeText: pixData.qr_code,
         },

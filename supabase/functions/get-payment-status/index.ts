@@ -24,13 +24,10 @@ serve(async (req) => {
       });
     }
 
-    const paguexResponse = await getPaguexTransaction(gatewayTransactionId);
+    const paguexTransactionData = await getPaguexTransaction(gatewayTransactionId);
     
-    // A resposta da Paguex para consulta de transação vem aninhada em 'data'
-    const paguexTransactionData = paguexResponse.data;
-
     if (!paguexTransactionData || !paguexTransactionData.status) {
-        console.error('[get-payment-status] Invalid response structure from Paguex:', paguexResponse);
+        console.error('[get-payment-status] Invalid response structure from Paguex:', paguexTransactionData);
         throw new Error('Resposta inválida do provedor de pagamento.');
     }
     
@@ -57,7 +54,7 @@ serve(async (req) => {
       
       await supabaseAdmin
         .from('transactions')
-        .update({ status: 'paid', raw_gateway_response: paguexResponse })
+        .update({ status: 'paid', raw_gateway_response: paguexTransactionData })
         .eq('id', ourTransaction.id);
 
       if (!ourTransaction.meta_event_sent) {
