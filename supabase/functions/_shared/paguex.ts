@@ -45,7 +45,8 @@ export async function createPaguexTransaction(payload: object) {
       const errorMessage = errorData.message || (errorData.errors && JSON.stringify(errorData.errors)) || 'Falha na comunicação com o provedor de pagamento.';
       throw new Error(errorMessage);
     } catch (e) {
-      throw new Error('Falha na comunicação com o provedor de pagamento.');
+      const genericMessage = `Falha na comunicação com o provedor de pagamento. Status: ${response.status}`;
+      throw new Error(responseText || genericMessage);
     }
   }
 
@@ -87,7 +88,7 @@ export async function getPaguexCompanyData() {
 /**
  * Busca informações de uma transação na Paguex.
  * @param transactionId - O ID da transação.
- * @returns Os dados da transação.
+ * @returns Os dados da transação, ou null se não for encontrada (404).
  */
 export async function getPaguexTransaction(transactionId: string) {
   const authHeader = getPaguexAuthHeader();
@@ -101,12 +102,25 @@ export async function getPaguexTransaction(transactionId: string) {
     },
   });
 
-  const data = await response.json();
-
   if (!response.ok) {
-    console.error(`[getPaguexTransaction] Falha ao buscar transação ${transactionId} na Paguex:`, response.status, data);
-    throw new Error(data.message || 'Falha na comunicação com o provedor de pagamento.');
+    const responseText = await response.text();
+    console.warn(`[getPaguexTransaction] Falha ao buscar transação ${transactionId}. Status: ${response.status}. Resposta: "${responseText}"`);
+    
+    if (response.status === 404) {
+        return null; // Retorna null para que a função chamadora saiba que não foi encontrado.
+    }
+
+    let errorMessage = `Falha na comunicação com o provedor. Status: ${response.status}`;
+    if (responseText) {
+        try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || JSON.stringify(errorData.errors) || errorMessage;
+        } catch (e) {
+            errorMessage = responseText.substring(0, 150);
+        }
+    }
+    throw new Error(errorMessage);
   }
 
-  return data;
+  return await response.json();
 }

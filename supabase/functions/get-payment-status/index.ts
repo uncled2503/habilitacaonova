@@ -26,7 +26,15 @@ serve(async (req) => {
 
     const paguexResponse = await getPaguexTransaction(gatewayTransactionId);
     
-    // A resposta da Paguex para consulta de transação vem aninhada em 'data'
+    // Se a transação não for encontrada (404), consideramos como pendente.
+    if (!paguexResponse) {
+        console.warn(`[get-payment-status] Transaction ${gatewayTransactionId} not found on Paguex (404). Treating as 'pending'.`);
+        return new Response(JSON.stringify({ status: 'pending' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+    }
+    
     const paguexTransactionData = paguexResponse.data;
 
     if (!paguexTransactionData || !paguexTransactionData.status) {
