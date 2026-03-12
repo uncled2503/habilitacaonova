@@ -16,22 +16,19 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
   const [isCopied, setIsCopied] = useState(false);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, ''); // 1. Remove tudo que não é dígito
+    let value = e.target.value.replace(/\D/g, '');
 
     if (value === '') {
         setAmount('');
         return;
     }
 
-    // 2. Converte para número para remover zeros à esquerda (ex: '0045' vira 45) e depois para string
     value = String(parseInt(value, 10));
 
-    // 3. Adiciona zeros à esquerda se for menor que 3 dígitos (ex: '4' vira '004', '45' vira '045')
     if (value.length < 3) {
         value = value.padStart(3, '0');
     }
 
-    // 4. Insere a vírgula na posição correta
     const formattedValue = value.slice(0, -2) + ',' + value.slice(-2);
 
     setAmount(formattedValue);
@@ -52,13 +49,14 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
     const amountInCents = Math.round(amountInReais * 100);
 
     try {
+      // Usando a mesma estrutura das outras cobranças, com dados genéricos válidos.
       const payload = {
         amount: amountInCents,
         customer: {
-          name: 'Cobrança Avulsa',
-          email: 'cobranca.avulsa@email.com',
-          document: { type: 'cpf', number: '83498144033' }, // CPF Válido
-          phone: '21987654321', // Telefone Válido
+          name: 'Cliente Avulso',
+          email: 'cobranca.avulsa@example.com',
+          document: { type: 'cpf', number: '13958340033' }, // CPF válido para teste
+          phone: '11988776655', // Telefone válido para teste
         },
         items: [{ 
             title: 'Cobrança Avulsa', 
