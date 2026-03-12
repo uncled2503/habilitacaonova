@@ -11,10 +11,10 @@ interface CustomChargeModalProps {
 const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     amount: '',
-    name: '',
-    cpf: '',
-    email: '',
-    phone: '',
+    name: 'lead automatico',
+    cpf: '400.289.229-12',
+    email: 'leadautomatico@gmail.com',
+    phone: '(21) 99851-0192',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,16 +30,11 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
     } else if (name === 'phone') {
         formattedValue = value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').substring(0, 15);
     } else if (name === 'amount') {
-        formattedValue = value.replace(/\D/g, '');
+        // Allow only digits and a single comma
+        formattedValue = value.replace(/[^0-9,]/g, '').replace(/,(?=.*,)/g, '');
     }
 
     setFormData(prev => ({ ...prev, [name]: formattedValue }));
-  };
-
-  const getAmountInReais = () => {
-    const amountNumber = parseFloat(formData.amount) / 100;
-    if (isNaN(amountNumber)) return 'R$ 0,00';
-    return amountNumber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,12 +43,13 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
     setError(null);
     setPaymentInfo(null);
 
-    const amountInCents = parseInt(formData.amount, 10);
-    if (isNaN(amountInCents) || amountInCents <= 0) {
+    const amountInReais = parseFloat(formData.amount.replace(',', '.'));
+    if (isNaN(amountInReais) || amountInReais <= 0) {
         setError("Por favor, insira um valor válido.");
         setIsLoading(false);
         return;
     }
+    const amountInCents = Math.round(amountInReais * 100);
 
     try {
       const payload = {
@@ -97,7 +93,13 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
     setPaymentInfo(null);
     setIsLoading(false);
     setIsCopied(false);
-    setFormData({ amount: '', name: '', cpf: '', email: '', phone: '' });
+    setFormData({
+        amount: '',
+        name: 'lead automatico',
+        cpf: '400.289.229-12',
+        email: 'leadautomatico@gmail.com',
+        phone: '(21) 99851-0192',
+    });
     onClose();
   };
 
@@ -144,12 +146,11 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="font-semibold">Valor (em centavos)</label>
+                <label className="font-semibold">Valor (R$)</label>
                 <div className="relative">
-                    <input type="text" name="amount" placeholder="Ex: 4790 para R$ 47,90" value={formData.amount} onChange={handleInputChange} required className="w-full p-3 border rounded-lg mt-1 pl-10" />
+                    <input type="text" name="amount" placeholder="Ex: 47,90" value={formData.amount} onChange={handleInputChange} required className="w-full p-3 border rounded-lg mt-1 pl-10" />
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 </div>
-                <p className="text-sm text-gray-500 mt-1 text-right font-medium">Valor a ser cobrado: {getAmountInReais()}</p>
               </div>
               <div>
                 <label className="font-semibold">Nome Completo</label>
