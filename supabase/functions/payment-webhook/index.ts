@@ -16,13 +16,15 @@ serve(async (req) => {
 
   try {
     const webhookData = await req.json();
-    console.log('[payment-webhook] Received webhook data from FuriaPay:', JSON.stringify(webhookData, null, 2));
+    console.log('[payment-webhook] Received webhook data from Paguex:', JSON.stringify(webhookData, null, 2));
 
-    // Ajustado para o formato da FuriaPay (Id, Status, Amount)
-    const { Id: gatewayTransactionId, Status: newStatus, Amount } = webhookData;
+    // Mais robusto: aceita PascalCase (Id, Status) ou camelCase (id, status)
+    const gatewayTransactionId = webhookData.Id || webhookData.id;
+    const newStatus = webhookData.Status || webhookData.status;
+    const Amount = webhookData.Amount || webhookData.amount;
 
     if (!gatewayTransactionId || !newStatus) {
-        console.error('[payment-webhook] Missing Id or Status in FuriaPay webhook payload.');
+        console.error('[payment-webhook] Missing Id/id or Status/status in webhook payload.');
         return new Response(JSON.stringify({ error: 'Missing required fields in webhook payload.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
@@ -63,7 +65,7 @@ serve(async (req) => {
 
     console.log(`[payment-webhook] Successfully updated transaction ${updatedTransaction.id} to status '${newStatus}'.`);
 
-    // O status de pago da FuriaPay é 'PAID'
+    // O status de pago da Paguex é 'PAID'
     if (newStatus.toUpperCase() === 'PAID' && !updatedTransaction.meta_event_sent) {
       console.log(`[payment-webhook] Processing PAID event for transaction ${updatedTransaction.id}.`);
       
