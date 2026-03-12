@@ -3,7 +3,7 @@ import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
-import { X, Loader2, AlertTriangle, Copy, CheckCircle, DollarSign, FileDown, User, Mail, Phone, FileText } from 'lucide-react';
+import { X, Loader2, AlertTriangle, Copy, CheckCircle, DollarSign, FileDown } from 'lucide-react';
 
 interface ReceivePaymentModalProps {
   isOpen: boolean;
@@ -12,49 +12,25 @@ interface ReceivePaymentModalProps {
 
 const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({
-    amount: '',
-    name: '',
-    cpf: '',
-    email: '',
-    phone: ''
-  });
+  const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    let formattedValue = value;
-
-    if (name === 'amount') {
-      const numericValue = value.replace(/\D/g, '');
-      if (numericValue === '') {
-        formattedValue = '';
-      } else {
-        const numberValue = parseInt(numericValue, 10);
-        formattedValue = new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-        }).format(numberValue / 100);
-      }
-    } else if (name === 'cpf') {
-      formattedValue = value
-        .replace(/\D/g, '')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
-        .substring(0, 14);
-    } else if (name === 'phone') {
-      formattedValue = value
-        .replace(/\D/g, '')
-        .replace(/^(\d{2})(\d)/g, '($1) $2')
-        .replace(/(\d{5})(\d)/, '$1-$2')
-        .substring(0, 15);
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const numericValue = value.replace(/\D/g, '');
+    if (numericValue === '') {
+      setAmount('');
+    } else {
+      const numberValue = parseInt(numericValue, 10);
+      const formattedValue = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }).format(numberValue / 100);
+      setAmount(formattedValue);
     }
-
-    setFormData(prev => ({ ...prev, [name]: formattedValue }));
   };
 
   const parseAmountToCents = (formattedAmount: string): number => {
@@ -67,7 +43,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
     setIsLoading(true);
     setError(null);
 
-    const amountInCents = parseAmountToCents(formData.amount);
+    const amountInCents = parseAmountToCents(amount);
     if (amountInCents <= 0) {
       setError("Por favor, insira um valor válido.");
       setIsLoading(false);
@@ -78,13 +54,13 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
       const payload = {
         amount: amountInCents,
         customer: {
-          name: formData.name,
-          email: formData.email,
-          document: { type: 'cpf', number: formData.cpf.replace(/\D/g, '') },
-          phone: formData.phone.replace(/\D/g, ''),
+          name: 'Cliente Avulso',
+          email: 'cliente@email.com',
+          document: { type: 'cpf', number: '11111111111' },
+          phone: '11999999999',
         },
         items: [{
-          title: 'Checkout',
+          title: 'Pagamento Avulso',
           unit_price: amountInCents,
           quantity: 1,
           tangible: false
@@ -138,7 +114,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
         doc.addImage(logoImg, 'PNG', 110, 20, 60, 15);
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text('Valor Pendente - Taxa de Adesão', 140, 60, { align: 'center' });
+        doc.text('Comprovante de Pagamento PIX', 140, 60, { align: 'center' });
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text(`Valor: ${amountFormatted}`, 140, 75, { align: 'center' });
@@ -162,7 +138,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
   };
 
   const handleClose = () => {
-    setFormData({ amount: '', name: '', cpf: '', email: '', phone: '' });
+    setAmount('');
     setError(null);
     setPaymentInfo(null);
     setIsLoading(false);
@@ -194,7 +170,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
             </div>
           ) : paymentInfo?.data ? (
             <div className="text-center">
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Valor Pendente - Taxa de Adesão</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Pagamento PIX Gerado</h3>
               <p className="text-gray-600 mb-4">
                 Valor: <strong>{(paymentInfo.data.amount / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
               </p>
@@ -222,23 +198,18 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClo
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
-                <div className="relative"><DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="text" name="amount" value={formData.amount} onChange={handleInputChange} placeholder="R$ 0,00" required className="w-full p-3 pl-10 border rounded-lg" /></div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo do Cliente</label>
-                <div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Nome do Cliente" required className="w-full p-3 pl-10 border rounded-lg" /></div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">CPF do Cliente</label>
-                <div className="relative"><FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="text" name="cpf" value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" required className="w-full p-3 pl-10 border rounded-lg" /></div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email do Cliente</label>
-                <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="cliente@email.com" required className="w-full p-3 pl-10 border rounded-lg" /></div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Celular do Cliente</label>
-                <div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="(00) 00000-0000" required className="w-full p-3 pl-10 border rounded-lg" /></div>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input 
+                    type="text" 
+                    name="amount" 
+                    value={amount} 
+                    onChange={handleAmountChange} 
+                    placeholder="R$ 0,00" 
+                    required 
+                    className="w-full p-3 pl-10 border rounded-lg" 
+                  />
+                </div>
               </div>
               <button type="submit" className="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-green-700 transition-colors">
                 Gerar PIX
