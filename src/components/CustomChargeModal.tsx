@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { QRCodeCanvas } from 'qrcode.react';
-import { X, Loader2, AlertTriangle, Copy, CheckCircle, DollarSign } from 'lucide-react';
+import { X, Loader2, AlertTriangle, Copy, CheckCircle, DollarSign, User } from 'lucide-react';
 
 interface CustomChargeModalProps {
   isOpen: boolean;
@@ -10,6 +10,8 @@ interface CustomChargeModalProps {
 
 const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }) => {
   const [amount, setAmount] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerCpf, setCustomerCpf] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
@@ -17,21 +19,26 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
-
     if (value === '') {
         setAmount('');
         return;
     }
-
     value = String(parseInt(value, 10));
-
     if (value.length < 3) {
         value = value.padStart(3, '0');
     }
-
     const formattedValue = value.slice(0, -2) + ',' + value.slice(-2);
-
     setAmount(formattedValue);
+  };
+
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formattedCpf = value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    setCustomerCpf(formattedCpf.substring(0, 14));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,20 +53,24 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
         setIsLoading(false);
         return;
     }
+    if (!customerName || !customerCpf) {
+        setError("Por favor, preencha o nome e o CPF do cliente.");
+        setIsLoading(false);
+        return;
+    }
     const amountInCents = Math.round(amountInReais * 100);
 
     try {
-      // Usando a mesma estrutura das outras cobranças, com dados genéricos válidos.
       const payload = {
         amount: amountInCents,
         customer: {
-          name: 'Cliente Avulso',
+          name: customerName,
           email: 'cobranca.avulsa@example.com',
-          document: { type: 'cpf', number: '13958340033' }, // CPF válido para teste
-          phone: '11988776655', // Telefone válido para teste
+          document: { type: 'cpf', number: customerCpf.replace(/\D/g, '') },
+          phone: '11999999999', // Telefone genérico válido
         },
         items: [{ 
-            title: 'Cobrança Avulsa', 
+            title: 'Serviços Administrativos', 
             unit_price: amountInCents, 
             quantity: 1,
             tangible: false
@@ -92,6 +103,8 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
     setIsLoading(false);
     setIsCopied(false);
     setAmount('');
+    setCustomerName('');
+    setCustomerCpf('');
     onClose();
   };
 
@@ -137,6 +150,14 @@ const CustomChargeModal: React.FC<CustomChargeModalProps> = ({ isOpen, onClose }
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="font-semibold">Nome do Cliente</label>
+                <input type="text" name="customerName" placeholder="Nome Completo" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required className="w-full p-3 border rounded-lg mt-1" />
+              </div>
+              <div>
+                <label className="font-semibold">CPF do Cliente</label>
+                <input type="text" name="customerCpf" placeholder="000.000.000-00" value={customerCpf} onChange={handleCpfChange} required className="w-full p-3 border rounded-lg mt-1" maxLength={14} />
+              </div>
               <div>
                 <label className="font-semibold">Valor (R$)</label>
                 <div className="relative">
