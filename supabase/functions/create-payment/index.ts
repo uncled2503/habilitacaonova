@@ -43,8 +43,9 @@ serve(async (req) => {
     const paguexResponse = await createPaguexTransaction(paguexPayload);
     console.log('[create-payment] Received response from Paguex:', JSON.stringify(paguexResponse, null, 2));
 
-    const transactionData = paguexResponse; // Corrigido: A resposta é o próprio objeto
-    const pixData = transactionData && transactionData.pix;
+    const transactionData = paguexResponse;
+    const pixDataArray = transactionData && Array.isArray(transactionData.pix) ? transactionData.pix : [];
+    const pixData = pixDataArray.length > 0 ? pixDataArray[0] : null;
 
     if (!transactionData || !transactionData.id || !pixData || !pixData.qr_code) {
       console.error('[create-payment] Invalid response structure from Paguex:', paguexResponse);
