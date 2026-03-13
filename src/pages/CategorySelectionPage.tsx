@@ -8,6 +8,7 @@ interface UserData {
     name: string;
     cpf: string;
     leadId?: string;
+    cnh_category?: string;
 }
 
 interface Message {
@@ -266,8 +267,13 @@ const CategorySelectionPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const userData: UserData | undefined = location.state?.userData || JSON.parse(sessionStorage.getItem('cnh_userData') || 'null');
-    const selectedState: string | undefined = location.state?.selectedState || sessionStorage.getItem('cnh_selectedState') || undefined;
+    const [userData, setUserData] = useState<UserData | null>(() => {
+        const savedData = sessionStorage.getItem('cnh_userData');
+        return savedData ? JSON.parse(savedData) : null;
+    });
+    const [selectedState, setSelectedState] = useState<string | null>(() => {
+        return sessionStorage.getItem('cnh_selectedState');
+    });
     
     const firstName = userData?.name.split(' ')[0];
 
@@ -317,25 +323,29 @@ const CategorySelectionPage: React.FC = () => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isBotTyping]);
 
-    const handleCategorySelect = (category: string, description: string) => {
-        if (conversationStep !== 0) return;
+    const handleCategorySelect = async (category: string, description: string) => {
+        if (conversationStep !== 0 || !userData?.leadId) return;
+        
         addMessage('user', description);
         setSelectedCategory(category);
         setConversationStep(1);
 
-        if (userData?.leadId) {
-            supabase
-                .from('leads')
-                .update({ cnh_category: category })
-                .eq('id', userData.leadId)
-                .then(({ error }) => {
-                    if (error) {
-                        console.error("Error updating CNH category:", error.message);
-                    } else {
-                        console.log("CNH category updated successfully.");
-                    }
-                });
+        const { error } = await supabase
+            .from('leads')
+            .update({ cnh_category: category })
+            .eq('id', userData.leadId);
+
+        if (error) {
+            console.error("Error updating CNH category:", error.message);
+            addMessage('bot', 'Ocorreu um erro ao salvar sua escolha. Por favor, tente novamente.');
+            setConversationStep(0); // Volta ao passo anterior
+            return;
         }
+        
+        console.log("CNH category updated successfully.");
+        const updatedUserData = { ...userData, cnh_category: category };
+        sessionStorage.setItem('cnh_userData', JSON.stringify(updatedUserData));
+        setUserData(updatedUserData);
 
         setIsBotTyping(true);
         setTimeout(() => {
