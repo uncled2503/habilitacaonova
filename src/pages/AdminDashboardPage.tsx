@@ -6,6 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import GenerateChargeModal from '../components/GenerateChargeModal';
 import CustomChargeModal from '../components/CustomChargeModal';
+import EditWhatsAppMessageModal from '../components/EditWhatsAppMessageModal';
 
 // Interfaces
 interface Lead {
@@ -66,6 +67,13 @@ const AdminDashboardPage: React.FC = () => {
     const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
     const [selectedLeadForCharge, setSelectedLeadForCharge] = useState<Lead | null>(null);
     const [isCustomChargeModalOpen, setIsCustomChargeModalOpen] = useState(false);
+    const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+
+    const defaultWhatsAppMessage = `Olá, *{name}*, portador do CPF nº *{cpf}*. Meu nome é Lukas, sou despachante credenciado pelo DETRAN, responsável por administrar todas as solicitações referente ao programa CNH Social 2026, recebemos o cadastro do(a) senhor(a) no sistema e estou entrando em contato para dar sequência ao processo! ✅\n\nResponda com ➡️ OK ⬅️ para dar continuidade.`;
+
+    const [whatsAppMessageTemplate, setWhatsAppMessageTemplate] = useState(() => {
+        return localStorage.getItem('whatsAppMessageTemplate') || defaultWhatsAppMessage;
+    });
 
     // CNH State
     const [cnhStats, setCnhStats] = useState({ totalLeads: 0, totalRevenue: 0, paidTransactions: 0 });
@@ -257,15 +265,20 @@ const AdminDashboardPage: React.FC = () => {
             return;
         }
     
-        const name = lead.name;
-        const cpf = formatCpf(lead.cpf);
-    
-        const message = `Olá, *${name}*, portador do CPF nº *${cpf}*. Meu nome é Lukas, sou despachante credenciado pelo DETRAN, responsável por administrar todas as solicitações referente ao programa CNH Social 2026, recebemos o cadastro do(a) senhor(a) no sistema e estou entrando em contato para dar sequência ao processo! ✅\n\nResponda com ➡️ OK ⬅️ para dar continuidade.`;
+        const message = whatsAppMessageTemplate
+            .replace(/{name}/g, lead.name)
+            .replace(/{cpf}/g, formatCpf(lead.cpf));
     
         const cleanedPhone = lead.phone.replace(/\D/g, '');
         const whatsappUrl = `https://wa.me/55${cleanedPhone}?text=${encodeURIComponent(message)}`;
     
         window.open(whatsappUrl, '_blank');
+    };
+
+    const handleSaveWhatsAppMessage = (newMessage: string) => {
+        setWhatsAppMessageTemplate(newMessage);
+        localStorage.setItem('whatsAppMessageTemplate', newMessage);
+        setIsWhatsAppModalOpen(false);
     };
 
     const handleUpdateStarlinkContactStatus = async (customer: StarlinkCustomer) => {
@@ -359,7 +372,8 @@ const AdminDashboardPage: React.FC = () => {
                     <div className="flex items-center gap-3"><img src="/Gov.br_logo.svg.png" alt="gov.br" className="h-8" /><h1 className="text-xl font-bold text-gray-800">Painel Administrativo</h1></div>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 text-green-600"><ShieldCheck size={20} /><span className="font-semibold hidden sm:inline">{user?.email}</span></div>
-                        <button onClick={() => setIsCustomChargeModalOpen(true)} className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-green-600 transition-colors"><DollarSign size={18} /> <span className="hidden sm:inline">Cobrança Avulsa</span></button>
+                        <button onClick={() => setIsCustomChargeModalOpen(true)} className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-yellow-600 transition-colors"><DollarSign size={18} /> <span className="hidden sm:inline">Cobrança Avulsa</span></button>
+                        <button onClick={() => setIsWhatsAppModalOpen(true)} className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-green-600 transition-colors"><MessageCircle size={18} /> <span className="hidden sm:inline">Editar Mensagem</span></button>
                         <button onClick={fetchData} className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-600 transition-colors disabled:bg-gray-400" disabled={loading}>{loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}<span className="hidden sm:inline">Atualizar</span></button>
                         <button onClick={signOut} className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-600 transition-colors"><LogOut size={18} /> Sair</button>
                     </div>
@@ -517,6 +531,12 @@ const AdminDashboardPage: React.FC = () => {
             <CustomChargeModal 
                 isOpen={isCustomChargeModalOpen} 
                 onClose={() => setIsCustomChargeModalOpen(false)} 
+            />
+            <EditWhatsAppMessageModal
+                isOpen={isWhatsAppModalOpen}
+                onClose={() => setIsWhatsAppModalOpen(false)}
+                currentMessage={whatsAppMessageTemplate}
+                onSave={handleSaveWhatsAppMessage}
             />
         </div>
     );
