@@ -330,19 +330,18 @@ const CategorySelectionPage: React.FC = () => {
         setSelectedCategory(category);
         setConversationStep(1);
 
-        const { error } = await supabase
-            .from('leads')
-            .update({ cnh_category: category })
-            .eq('id', userData.leadId);
+        const { error } = await supabase.functions.invoke('update-lead-category', {
+            body: { leadId: userData.leadId, category: category },
+        });
 
         if (error) {
-            console.error("Error updating CNH category:", error.message);
+            console.error("Error updating CNH category via function:", error);
             addMessage('bot', 'Ocorreu um erro ao salvar sua escolha. Por favor, tente novamente.');
-            setConversationStep(0); // Volta ao passo anterior
+            setConversationStep(0); // Go back to the previous step
             return;
         }
         
-        console.log("CNH category updated successfully.");
+        console.log("CNH category updated successfully via function.");
         const updatedUserData = { ...userData, cnh_category: category };
         sessionStorage.setItem('cnh_userData', JSON.stringify(updatedUserData));
         setUserData(updatedUserData);
