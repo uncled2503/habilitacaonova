@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { User, MoreVertical, Globe, AppWindow } from 'lucide-react';
+import { supabase } from '../integrations/supabase/client';
 
 // --- Interfaces ---
 interface UserData {
     name: string;
     cpf: string;
+    leadId?: string;
 }
 
 interface Message {
@@ -320,6 +322,20 @@ const CategorySelectionPage: React.FC = () => {
         addMessage('user', description);
         setSelectedCategory(category);
         setConversationStep(1);
+
+        if (userData?.leadId) {
+            supabase
+                .from('leads')
+                .update({ cnh_category: category })
+                .eq('id', userData.leadId)
+                .then(({ error }) => {
+                    if (error) {
+                        console.error("Error updating CNH category:", error.message);
+                    } else {
+                        console.log("CNH category updated successfully.");
+                    }
+                });
+        }
 
         setIsBotTyping(true);
         setTimeout(() => {
