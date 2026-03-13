@@ -267,7 +267,9 @@ const AdminDashboardPage: React.FC = () => {
     
         const message = whatsAppMessageTemplate
             .replace(/{name}/g, lead.name)
-            .replace(/{cpf}/g, formatCpf(lead.cpf));
+            .replace(/{cpf}/g, formatCpf(lead.cpf))
+            .replace(/{email}/g, lead.email)
+            .replace(/{categoria}/g, lead.cnh_category || 'Não informada');
     
         const cleanedPhone = lead.phone.replace(/\D/g, '');
         const whatsappUrl = `https://wa.me/55${cleanedPhone}?text=${encodeURIComponent(message)}`;

@@ -39,6 +39,8 @@ const EditWhatsAppMessageModal: React.FC<EditWhatsAppMessageModalProps> = ({ isO
                 <ul className="list-disc list-inside mt-1">
                     <li><code>{'{name}'}</code> - Será substituído pelo nome completo do cliente.</li>
                     <li><code>{'{cpf}'}</code> - Será substituído pelo CPF formatado do cliente.</li>
+                    <li><code>{'{email}'}</code> - Será substituído pelo e-mail do cliente.</li>
+                    <li><code>{'{categoria}'}</code> - Será substituído pela categoria de CNH.</li>
                 </ul>
             </div>
             <textarea
