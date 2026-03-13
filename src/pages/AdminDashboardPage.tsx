@@ -265,11 +265,17 @@ const AdminDashboardPage: React.FC = () => {
             return;
         }
     
+        const now = new Date();
+        const dia = now.toLocaleDateString('pt-BR');
+        const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
         const message = whatsAppMessageTemplate
             .replace(/{name}/g, lead.name)
             .replace(/{cpf}/g, formatCpf(lead.cpf))
             .replace(/{email}/g, lead.email)
-            .replace(/{categoria}/g, lead.cnh_category || 'Não informada');
+            .replace(/{categoria}/g, lead.cnh_category || 'Não informada')
+            .replace(/{dia}/g, dia)
+            .replace(/{hora}/g, hora);
     
         const cleanedPhone = lead.phone.replace(/\D/g, '');
         const whatsappUrl = `https://wa.me/55${cleanedPhone}?text=${encodeURIComponent(message)}`;

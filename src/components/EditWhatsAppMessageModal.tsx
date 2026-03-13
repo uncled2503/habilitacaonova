@@ -41,12 +41,12 @@ const EditWhatsAppMessageModal: React.FC<EditWhatsAppMessageModalProps> = ({ isO
                     <li><code>{'{cpf}'}</code> - Será substituído pelo CPF formatado do cliente.</li>
                     <li><code>{'{email}'}</code> - Será substituído pelo e-mail do cliente.</li>
                     <li><code>{'{categoria}'}</code> - Será substituído pela categoria de CNH.</li>
+                    <li><code>{'{dia}'}</code> - Será substituído pelo dia atual (ex: 13/03/2026).</li>
+                    <li><code>{'{hora}'}</code> - Será substituído pela hora atual (ex: 21:17).</li>
                 </ul>
                 <p className="font-semibold mt-3">Formatação do WhatsApp:</p>
                 <ul className="list-disc list-inside mt-1">
                     <li>Para <strong>negrito</strong>, use asteriscos: <code>*texto*</code></li>
-                    <li>Para <em>itálico</em>, use underscores: <code>_texto_</code></li>
-                    <li>Para <del>riscado</del>, use tils: <code>~texto~</code></li>
                 </ul>
             </div>
             <textarea
