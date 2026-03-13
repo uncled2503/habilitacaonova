@@ -259,15 +259,16 @@ const AdminDashboardPage: React.FC = () => {
         }
     };
 
-    const handleSendWhatsAppMessage = (lead: Lead) => {
-        if (!lead.phone) {
+    const handleSendWhatsAppMessage = (transaction: Transaction) => {
+        const lead = transaction.leads;
+        if (!lead || !lead.phone) {
             alert("Este lead não possui um número de telefone cadastrado.");
             return;
         }
     
-        const now = new Date();
-        const dia = now.toLocaleDateString('pt-BR');
-        const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const transactionDate = new Date(transaction.created_at);
+        const dia = transactionDate.toLocaleDateString('pt-BR');
+        const hora = transactionDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
         const message = whatsAppMessageTemplate
             .replace(/{name}/g, lead.name)
@@ -459,7 +460,7 @@ const AdminDashboardPage: React.FC = () => {
                                                             <DollarSign size={16} />
                                                         </button>
                                                         <button 
-                                                            onClick={() => handleSendWhatsAppMessage(t.leads!)}
+                                                            onClick={() => handleSendWhatsAppMessage(t)}
                                                             className="p-2 text-green-500 hover:bg-green-100 rounded-full transition-colors"
                                                             title="Enviar mensagem no WhatsApp"
                                                         >
