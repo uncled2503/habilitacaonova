@@ -21,6 +21,37 @@ interface StandardizedResponse {
 // --- API Provider Handlers ---
 
 /**
+ * Handler for the BrasilAPI. (New primary provider)
+ */
+async function handleBrasilApi(cpf: string): Promise<StandardizedResponse> {
+  const url = `https://brasilapi.com.br/api/cpf/v1/${cpf}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json' }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `BrasilAPI failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  
+  // BrasilAPI returns 'MASCULINO' or 'FEMININO', we need 'M' or 'F'
+  const gender = data.genero?.toUpperCase().startsWith('F') ? 'F' : 'M';
+  
+  return {
+    success: true,
+    data: {
+      name: data.nome,
+      birthDate: data.nascimento,
+      gender: gender,
+    }
+  };
+}
+
+
+/**
  * Handler for the CPFHub.io API.
  */
 async function handleCpfHub(cpf: string, apiKey: string): Promise<StandardizedResponse> {
@@ -70,10 +101,12 @@ async function handleHubDev(cpf: string, apiKey: string): Promise<StandardizedRe
 
 
 // --- API Provider Configuration ---
+// The function will try these providers in order.
 const apiProviders = [
-  { name: 'CPF_API_KEY', key: Deno.env.get('CPF_API_KEY'), handler: handleCpfHub },
-  { name: 'CPF_API_KEY_2', key: Deno.env.get('CPF_API_KEY_2'), handler: handleCpfHub },
-  { name: 'CPF_API_KEY_3', key: Deno.env.get('CPF_API_KEY_3'), handler: handleHubDev },
+  { name: 'BrasilAPI', handler: (cpf: string) => handleBrasilApi(cpf) },
+  { name: 'CPF_API_KEY', handler: (cpf: string) => handleCpfHub(cpf, Deno.env.get('CPF_API_KEY')!) },
+  { name: 'CPF_API_KEY_2', handler: (cpf: string) => handleCpfHub(cpf, Deno.env.get('CPF_API_KEY_2')!) },
+  { name: 'CPF_API_KEY_3', handler: (cpf: string) => handleHubDev(cpf, Deno.env.get('CPF_API_KEY_3')!) },
 ];
 
 
@@ -95,21 +128,16 @@ serve(async (req) => {
 
     const unformattedCpf = cpf.replace(/\D/g, '');
     
-    const configuredProviders = apiProviders.filter(p => p.key);
+    for (const provider of apiProviders) {
+      // For keyed APIs, check if the key exists before trying.
+      if (provider.name.includes('API_KEY') && !Deno.env.get(provider.name)) {
+        console.log(`[validate-cpf] Skipping provider ${provider.name} because key is not set.`);
+        continue;
+      }
 
-    if (configuredProviders.length === 0) {
-        console.error('[validate-cpf] No CPF API keys are set in environment variables.');
-        return new Response(JSON.stringify({ error: 'O serviço de validação de CPF não está configurado.' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500,
-        });
-    }
-
-    for (const provider of configuredProviders) {
       console.log(`[validate-cpf] Attempting validation with provider: ${provider.name}`);
       try {
-        // Call the specific handler for the provider
-        const result = await provider.handler(unformattedCpf, provider.key!);
+        const result = await provider.handler(unformattedCpf);
         
         if (result.success) {
           console.log(`[validate-cpf] CPF validation successful with ${provider.name} for CPF: ${cpf}`);
