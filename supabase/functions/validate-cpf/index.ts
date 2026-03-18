@@ -72,8 +72,8 @@ async function handleHubDev(cpf: string, apiKey: string): Promise<StandardizedRe
 // --- API Provider Configuration ---
 const apiProviders = [
   { name: 'CPF_API_KEY_3', key: Deno.env.get('CPF_API_KEY_3'), handler: handleHubDev },
-  // { name: 'CPF_API_KEY_2', key: Deno.env.get('CPF_API_KEY_2'), handler: handleCpfHub },
-  // { name: 'CPF_API_KEY', key: Deno.env.get('CPF_API_KEY'), handler: handleCpfHub },
+  { name: 'CPF_API_KEY_2', key: Deno.env.get('CPF_API_KEY_2'), handler: handleCpfHub },
+  { name: 'CPF_API_KEY', key: Deno.env.get('CPF_API_KEY'), handler: handleCpfHub },
 ];
 
 
